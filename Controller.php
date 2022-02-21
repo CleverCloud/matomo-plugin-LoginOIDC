@@ -21,6 +21,7 @@ use Piwik\Piwik;
 use Piwik\Plugins\UsersManager\API as UsersManagerAPI;
 use Piwik\Plugins\UsersManager\Model;
 use Piwik\Request;
+use Piwik\Plugins\UsersManager\UserUpdater;
 use Piwik\Session\SessionFingerprint;
 use Piwik\Session\SessionInitializer;
 use Piwik\Url;
@@ -390,6 +391,7 @@ class Controller extends \Piwik\Plugin\Controller
                                                         $matomoUserLogin,
                                                         /* $_isPasswordHashed = */ true,
                                                         /* $initialIdSite = */ null);
+                $this->setSuperUserAccessWithoutCurrentPassword($matomoUserLogin, true);
             });
             $userModel = new Model();
             $user = $userModel->getUser($matomoUserLogin);
@@ -397,6 +399,19 @@ class Controller extends \Piwik\Plugin\Controller
             $this->signinAndRedirect($user, $settings);
         } else {
             throw new Exception(Piwik::translate("LoginOIDC_ExceptionUserNotFoundAndSignupDisabled"));
+        }
+    }
+
+    public function setSuperUserAccessWithoutCurrentPassword($userLogin, $hasSuperUserAccess)
+    {
+        UsersManagerAPI::$SET_SUPERUSER_ACCESS_REQUIRE_PASSWORD_CONFIRMATION = false;
+        try {
+            \Piwik\API\Request::processRequest('UsersManager.setSuperUserAccess', [
+                'userLogin' => $userLogin,
+                'hasSuperUserAccess' => $hasSuperUserAccess,
+            ], $default = []);
+        } finally {
+            UsersManagerAPI::$SET_SUPERUSER_ACCESS_REQUIRE_PASSWORD_CONFIRMATION = true;
         }
     }
 
